@@ -24,9 +24,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -38,7 +40,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -68,7 +70,7 @@ public class SecurityConfig {
                             .map(user -> org.springframework.security.core.userdetails.User
                                     .withUsername(user.getEmail())
                                     .password(user.getPassword())
-                                    .authorities("USER")
+                                    .authorities(user.getRole())
                                     .build())
                             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
                     UsernamePasswordAuthenticationToken authentication =
