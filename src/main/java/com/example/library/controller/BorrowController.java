@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.HttpStatus;
 
 import java.security.Principal;
 import java.util.List;
@@ -41,5 +43,10 @@ public class BorrowController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<BorrowRecord>> getAllRecords() {
         return ResponseEntity.ok(borrowService.getAllRecords());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Validation error: " + ex.getBindingResult().getAllErrors().get(0).getDefaultMessage());
     }
 } 

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class BookController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Book> addBook(@RequestBody Book book) {
+    public ResponseEntity<Book> addBook(@Valid @RequestBody Book book) {
         return ResponseEntity.ok(bookService.addBook(book));
     }
 
@@ -35,7 +36,7 @@ public class BookController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book book) {
+    public ResponseEntity<Book> updateBook(@PathVariable Long id, @Valid @RequestBody Book book) {
         try {
             return ResponseEntity.ok(bookService.updateBook(id, book));
         } catch (RuntimeException e) {
