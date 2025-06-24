@@ -34,23 +34,45 @@
             window.location.href = 'login.html';
         };
 
-        // Fetch and display books
-        async function fetchBooks() {
-            const response = await fetch('/api/books');
-            const books = await response.json();
+        // Fetch and display books and user borrow history
+        async function fetchBooksAndHistory() {
+            const token = localStorage.getItem('jwtToken');
+            // Fetch all books
+            const booksResponse = await fetch('/api/books');
+            const books = await booksResponse.json();
+            // Fetch user borrow history
+            const historyResponse = await fetch('/api/borrow/history', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            const history = await historyResponse.json();
+            // Get IDs of books currently borrowed by the user (not yet returned)
+            const borrowedBookIds = history.filter(r => r.returnDate === null).map(r => r.book.id);
+            // Get IDs of all currently borrowed books (by any user)
+            // We'll use the fact that if a book is borrowed and not returned, it won't be available
+            // But for now, we'll just show Borrow for books not in borrowedBookIds
             const tbody = document.querySelector('#booksTable tbody');
             tbody.innerHTML = '';
             books.forEach(book => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${book.title}</td>
-                    <td>${book.author}</td>
-                    <td>${book.available ? 'Available' : 'Borrowed'}</td>
-                    <td>
-                        ${book.available ? `<button class="btn btn-primary btn-sm" onclick="borrowBook(${book.id})">Borrow</button>` : ''}
-                    </td>
+                // Check if this book is borrowed by the current user
+                const isBorrowedByUser = borrowedBookIds.includes(book.id);
+                // Check if this book is borrowed by anyone (status: Borrowed)
+                // We'll assume if it's in the books list, it's available unless borrowed by user
+                let status = 'Available';
+                let actionBtn = `<button class="btn btn-primary btn-sm" onclick="borrowBook(${book.id})">Borrow</button>`;
+                if (isBorrowedByUser) {
+                    status = 'Borrowed';
+                    actionBtn = `<button class="btn btn-warning btn-sm" onclick="returnBook(${book.id})">Return</button>`;
+                }
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${status}</td>
+                        <td>${actionBtn}</td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
             });
         }
 
@@ -69,7 +91,7 @@
                 const text = await response.text();
                 if (response.ok) {
                     messageDiv.innerHTML = `<div class='alert alert-success'>${text}</div>`;
-                    fetchBooks();
+                    fetchBooksAndHistory();
                 } else {
                     messageDiv.innerHTML = `<div class='alert alert-danger'>${text}</div>`;
                 }
@@ -78,14 +100,39 @@
             }
         }
 
-        // Expose borrowBook to global scope
-        window.borrowBook = borrowBook;
+        // Return book function
+        async function returnBook(bookId) {
+            const token = localStorage.getItem('jwtToken');
+            const messageDiv = document.getElementById('dashboardMessage');
+            messageDiv.innerHTML = '';
+            try {
+                const response = await fetch(`/api/return/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                const text = await response.text();
+                if (response.ok) {
+                    messageDiv.innerHTML = `<div class='alert alert-success'>${text}</div>`;
+                    fetchBooksAndHistory();
+                } else {
+                    messageDiv.innerHTML = `<div class='alert alert-danger'>${text}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class='alert alert-danger'>Failed to return book.</div>`;
+            }
+        }
 
-        // Check for JWT and fetch books on page load
+        // Expose functions to global scope
+        window.borrowBook = borrowBook;
+        window.returnBook = returnBook;
+
+        // Check for JWT and fetch books/history on page load
         if (!localStorage.getItem('jwtToken')) {
             window.location.href = 'login.html';
         } else {
-            fetchBooks();
+            fetchBooksAndHistory();
         }
     </script>
 </body>
