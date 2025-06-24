@@ -44,10 +44,36 @@
     </div>
     <script>
         // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault(); // Prevent default form submission (page reload)
-            // TODO: Add backend integration here (send form data to backend API)
-            document.getElementById('loginMessage').innerHTML = '<div class="alert alert-info">Login logic not implemented yet.</div>';
+            const usernameOrEmail = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('loginMessage');
+            messageDiv.innerHTML = '';
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: usernameOrEmail,
+                        password: password
+                    })
+                });
+                const text = await response.text();
+                if (response.ok) {
+                    // Store JWT token in localStorage
+                    localStorage.setItem('jwtToken', text);
+                    messageDiv.innerHTML = `<div class="alert alert-success">Login successful!</div>`;
+                    // Optionally redirect to a dashboard or home page
+                    // window.location.href = 'dashboard.html';
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-danger">${text}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="alert alert-danger">Login failed. Please try again later.</div>`;
+            }
         });
     </script>
 </body>
