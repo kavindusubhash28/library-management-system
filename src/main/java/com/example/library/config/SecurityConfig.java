@@ -44,13 +44,8 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/register.html",
                     "/login.html",
-                    "/**/*.css",
-                    "/**/*.js",
-                    "/**/*.png",
-                    "/**/*.jpg",
-                    "/**/*.jpeg",
-                    "/**/*.gif",
-                    "/webjars/**"
+                    "/dashboard.html",
+                    "/api/books"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

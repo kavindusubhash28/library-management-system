@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Library Books</h2>
+            <button id="logoutBtn" class="btn btn-danger">Logout</button>
+        </div>
+        <div id="dashboardMessage"></div>
+        <table class="table table-striped" id="booksTable">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Book rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        // Logout functionality
+        document.getElementById('logoutBtn').onclick = function() {
+            localStorage.removeItem('jwtToken');
+            window.location.href = 'login.html';
+        };
+
+        // Fetch and display books
+        async function fetchBooks() {
+            const response = await fetch('/api/books');
+            const books = await response.json();
+            const tbody = document.querySelector('#booksTable tbody');
+            tbody.innerHTML = '';
+            books.forEach(book => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${book.title}</td>
+                    <td>${book.author}</td>
+                    <td>${book.available ? 'Available' : 'Borrowed'}</td>
+                    <td>
+                        ${book.available ? `<button class="btn btn-primary btn-sm" onclick="borrowBook(${book.id})">Borrow</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Borrow book function
+        async function borrowBook(bookId) {
+            const token = localStorage.getItem('jwtToken');
+            const messageDiv = document.getElementById('dashboardMessage');
+            messageDiv.innerHTML = '';
+            try {
+                const response = await fetch(`/api/borrow/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                const text = await response.text();
+                if (response.ok) {
+                    messageDiv.innerHTML = `<div class='alert alert-success'>${text}</div>`;
+                    fetchBooks();
+                } else {
+                    messageDiv.innerHTML = `<div class='alert alert-danger'>${text}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class='alert alert-danger'>Failed to borrow book.</div>`;
+            }
+        }
+
+        // Expose borrowBook to global scope
+        window.borrowBook = borrowBook;
+
+        // Check for JWT and fetch books on page load
+        if (!localStorage.getItem('jwtToken')) {
+            window.location.href = 'login.html';
+        } else {
+            fetchBooks();
+        }
+    </script>
+</body>
+</html> 
