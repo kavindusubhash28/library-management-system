@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 100%);
+            min-height: 100vh;
+        }
+        .dashboard-card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .modal-header {
+            background: #6366f1;
+            color: #fff;
+        }
+        .btn-primary {
+            background: #6366f1;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+        .spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        .table thead th {
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <div class="dashboard-card bg-white p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold mb-0">📚 Library User Dashboard</h2>
+                    <button class="btn btn-outline-secondary" onclick="logout()">Logout</button>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by title or author...">
+                    </div>
+                </div>
+                <div id="alertPlaceholder"></div>
+                <div id="bookTableContainer">
+                    <div class="spinner" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <table class="table table-hover align-middle d-none" id="bookTable">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>ISBN</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                        </thead>
+                        <tbody id="bookTableBody"></tbody>
+                    </table>
+                    <nav>
+                        <ul class="pagination justify-content-center" id="pagination"></ul>
+                    </nav>
+                </div>
+            </div>
+            <div class="dashboard-card bg-white p-4">
+                <h4 class="fw-bold mb-3">🕓 My Borrow History</h4>
+                <div id="historyTableContainer">
+                    <div class="spinner" id="historyLoadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <table class="table table-striped align-middle d-none" id="historyTable">
+                        <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>ISBN</th>
+                            <th>Borrowed On</th>
+                            <th>Returned On</th>
+                        </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="alert alert-info" id="debugInfo" style="display:none"></div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Role and token check
+if (!localStorage.getItem('jwtToken')) {
+    window.location.href = 'login.html';
+}
+const role = localStorage.getItem('userRole');
+if (role !== 'USER' && role !== 'ROLE_USER') {
+    window.location.href = 'dashboard.html';
+}
+// Debug info
+document.getElementById('debugInfo').style.display = 'block';
+document.getElementById('debugInfo').innerText = `Role: ${role}\nToken: ${localStorage.getItem('jwtToken')?.substring(0, 20)}...`;
+const API_BASE = '/api/books';
+const BORROW_API = '/api/borrow';
+let currentPage = 0;
+let pageSize = 10;
+let currentQuery = '';
+// Insert your JWT token here if needed:
+const JWT_TOKEN = localStorage.getItem('jwtToken');
+
+function getAuthHeaders() {
+    return JWT_TOKEN ? { 'Authorization': 'Bearer ' + JWT_TOKEN } : {};
+}
+
+function showAlert(message, type = 'success') {
+    const alertHtml = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>`;
+    document.getElementById('alertPlaceholder').innerHTML = alertHtml;
+    setTimeout(() => {
+        document.getElementById('alertPlaceholder').innerHTML = '';
+    }, 3000);
+}
+
+function showLoading(show) {
+    document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+    document.getElementById('bookTable').classList.toggle('d-none', show);
+}
+function showHistoryLoading(show) {
+    document.getElementById('historyLoadingSpinner').style.display = show ? 'flex' : 'none';
+    document.getElementById('historyTable').classList.toggle('d-none', show);
+}
+
+function fetchBooks(page = 0, size = 10, query = '') {
+    showLoading(true);
+    let url = query ? `${API_BASE}/search?query=${encodeURIComponent(query)}` : `${API_BASE}?page=${page}&size=${size}`;
+    fetch(url, { headers: getAuthHeaders() })
+        .then(res => {
+            if (res.status === 403) {
+                showAlert('Access denied (403). Please log out and log in again.', 'danger');
+                throw new Error('403');
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (query) {
+                renderBooks(data, 0, 1);
+            } else {
+                renderBooks(data.content, data.number, data.totalPages);
+            }
+            showLoading(false);
+        })
+        .catch(() => {
+            showAlert('Failed to fetch books', 'danger');
+            showLoading(false);
+        });
+}
+
+function fetchBorrowHistory() {
+    showHistoryLoading(true);
+    fetch(`${BORROW_API}/history`, { headers: getAuthHeaders() })
+        .then(res => {
+            if (res.status === 403) {
+                showAlert('Access denied (403). Please log out and log in again.', 'danger');
+                throw new Error('403');
+            }
+            return res.json();
+        })
+        .then(data => {
+            renderHistory(data);
+            showHistoryLoading(false);
+        })
+        .catch(() => {
+            showAlert('Failed to fetch borrow history', 'danger');
+            showHistoryLoading(false);
+        });
+}
+
+function renderBooks(books, page, totalPages) {
+    const tbody = document.getElementById('bookTableBody');
+    tbody.innerHTML = '';
+    // Fetch user's current borrows to determine status
+    fetch(`${BORROW_API}/history`, { headers: getAuthHeaders() })
+        .then(res => res.json())
+        .then(history => {
+            const borrowedBookIds = history.filter(r => r.returnDate === null).map(r => r.book.id);
+            books.forEach(book => {
+                const isBorrowed = borrowedBookIds.includes(book.id);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${book.id}</td>
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${book.isbn}</td>
+                        <td>${isBorrowed ? 'Borrowed' : 'Available'}</td>
+                        <td>
+                            ${isBorrowed
+                                ? `<button class="btn btn-warning btn-sm" onclick="returnBook(${book.id})">Return</button>`
+                                : `<button class="btn btn-primary btn-sm" onclick="borrowBook(${book.id})">Borrow</button>`}
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('bookTable').classList.remove('d-none');
+            renderPagination(page, totalPages);
+        });
+}
+
+function renderPagination(page, totalPages) {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    if (totalPages <= 1) return;
+    for (let i = 0; i < totalPages; i++) {
+        pagination.innerHTML += `<li class="page-item${i === page ? ' active' : ''}">
+            <button class="page-link" onclick="goToPage(${i})">${i + 1}</button>
+        </li>`;
+    }
+}
+
+function goToPage(page) {
+    currentPage = page;
+    fetchBooks(currentPage, pageSize, currentQuery);
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+    currentQuery = this.value.trim();
+    if (currentQuery) {
+        fetchBooks(0, pageSize, currentQuery);
+    } else {
+        fetchBooks(currentPage, pageSize);
+    }
+});
+
+function borrowBook(bookId) {
+    fetch(`${BORROW_API}/${bookId}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+    })
+    .then(res => res.text())
+    .then(msg => {
+        showAlert(msg || 'Book borrowed successfully!');
+        fetchBooks(currentPage, pageSize);
+        fetchBorrowHistory();
+    })
+    .catch(() => showAlert('Failed to borrow book', 'danger'));
+}
+
+function returnBook(bookId) {
+    fetch(`${BORROW_API}/return/${bookId}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+    })
+    .then(res => res.text())
+    .then(msg => {
+        showAlert(msg || 'Book returned successfully!');
+        fetchBooks(currentPage, pageSize);
+        fetchBorrowHistory();
+    })
+    .catch(() => showAlert('Failed to return book', 'danger'));
+}
+
+function renderHistory(history) {
+    const tbody = document.getElementById('historyTableBody');
+    tbody.innerHTML = '';
+    history.forEach(record => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${record.book.title}</td>
+                <td>${record.book.author}</td>
+                <td>${record.book.isbn}</td>
+                <td>${record.borrowDate ? record.borrowDate.split('T')[0] : ''}</td>
+                <td>${record.returnDate ? record.returnDate.split('T')[0] : '-'}</td>
+            </tr>
+        `;
+    });
+    document.getElementById('historyTable').classList.remove('d-none');
+}
+
+function logout() {
+    localStorage.removeItem('jwtToken');
+    localStorage.removeItem('userRole');
+    window.location.href = 'login.html';
+}
+
+// Initial load
+fetchBooks();
+fetchBorrowHistory();
+</script>
+</body>
+</html> 
