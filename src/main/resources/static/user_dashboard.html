@@ -107,7 +107,10 @@
 if (!localStorage.getItem('jwtToken')) {
     window.location.href = 'login.html';
 }
-// Removed role check to allow all authenticated users
+const role = localStorage.getItem('userRole');
+if (role === 'ROLE_ADMIN') {
+    window.location.href = 'dashboard.html';
+}
 // Debug info
 // document.getElementById('debugInfo').style.display = 'block';
 // document.getElementById('debugInfo').innerText = `Role: ${role}\nToken: ${localStorage.getItem('jwtToken')?.substring(0, 20)}...`;
