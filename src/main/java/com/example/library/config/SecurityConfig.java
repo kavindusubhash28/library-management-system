@@ -45,6 +45,7 @@ public class SecurityConfig {
                     "/register.html",
                     "/login.html",
                     "/dashboard.html",
+                    "/user_dashboard.html",
                     "/api/books"
                 ).permitAll()
                 .anyRequest().authenticated()
