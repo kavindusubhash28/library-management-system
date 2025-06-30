@@ -30,16 +30,21 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+    // Password encoder bean for hashing user passwords
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Main security filter chain configuration
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil, UserRepository userRepository) throws Exception {
         http
+            // Disable CSRF for stateless API
             .csrf(csrf -> csrf.disable())
+            // Configure endpoint access rules
             .authorizeHttpRequests(auth -> auth
+                // Publicly accessible endpoints and static pages
                 .requestMatchers(
                     "/api/auth/**",
                     "/register.html",
@@ -50,13 +55,17 @@ public class SecurityConfig {
                     "/api/books",
                     "/api/books/search"
                 ).permitAll()
+                // All other requests require authentication
                 .anyRequest().authenticated()
             )
+            // Use stateless session management (no HTTP session)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Add custom JWT authentication filter before the default username/password filter
             .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
+    // Custom filter to authenticate requests using JWT tokens
     class JwtAuthenticationFilter extends BasicAuthenticationFilter {
         private final JwtUtil jwtUtil;
         private final UserRepository userRepository;
@@ -70,15 +79,19 @@ public class SecurityConfig {
         @Override
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
+            // Extract Authorization header
             String header = request.getHeader("Authorization");
             if (header != null && header.startsWith("Bearer ")) {
                 String token = header.substring(7);
+                // Extract email (username) from JWT
                 String email = jwtUtil.extractUsername(token);
+                // Validate token and set authentication if valid
                 if (email != null && jwtUtil.validateToken(token, email)) {
                     UserDetails userDetails = userRepository.findByEmail(email)
                             .map(user -> org.springframework.security.core.userdetails.User
                                     .withUsername(user.getEmail())
                                     .password(user.getPassword())
+                                    // Prefix role with ROLE_ for Spring Security compatibility
                                     .authorities("ROLE_" + user.getRole())
                                     .build())
                             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -87,6 +100,7 @@ public class SecurityConfig {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
+            // Continue filter chain
             chain.doFilter(request, response);
         }
     }
