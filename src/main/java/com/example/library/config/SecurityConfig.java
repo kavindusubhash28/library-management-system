@@ -46,6 +46,7 @@ public class SecurityConfig {
                     "/login.html",
                     "/dashboard.html",
                     "/user_dashboard.html",
+                    "/borrow_records.html",
                     "/api/books",
                     "/api/books/search"
                 ).permitAll()

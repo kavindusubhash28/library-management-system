@@ -6,6 +6,8 @@ import com.example.library.model.User;
 import com.example.library.repository.BorrowRecordRepository;
 import com.example.library.repository.BookRepository;
 import com.example.library.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +17,7 @@ import java.util.Optional;
 
 @Service
 public class BorrowService {
+    private static final Logger logger = LoggerFactory.getLogger(BorrowService.class);
     @Autowired
     private BorrowRecordRepository borrowRecordRepository;
     @Autowired
@@ -41,11 +44,18 @@ public class BorrowService {
     public String returnBook(Long bookId, String userEmail) {
         Optional<User> userOpt = userRepository.findByEmail(userEmail);
         if (userOpt.isEmpty()) return "User not found";
-        List<BorrowRecord> records = borrowRecordRepository.findByUserIdAndBookIdAndReturnDateIsNull(userOpt.get().getId(), bookId);
-        if (records.isEmpty()) return "No active borrow record found";
+        Long userId = userOpt.get().getId();
+        logger.info("Attempting to return book. userId={}, bookId={}", userId, bookId);
+        List<BorrowRecord> records = borrowRecordRepository.findByUserIdAndBookIdAndReturnDateIsNull(userId, bookId);
+        logger.info("Found {} active borrow records for userId={}, bookId={}", records.size(), userId, bookId);
+        if (records.isEmpty()) {
+            logger.warn("No active borrow record found for user {} and book {}", userEmail, bookId);
+            return "No active borrow record found";
+        }
         BorrowRecord record = records.get(0);
+        logger.info("Returning book: recordId={}, userId={}, bookId={}", record.getId(), userId, bookId);
         record.setReturnDate(LocalDate.now());
-        borrowRecordRepository.save(record);
+        borrowRecordRepository.saveAndFlush(record);
         return "Book returned successfully";
     }
 

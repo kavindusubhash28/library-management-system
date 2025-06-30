@@ -123,7 +123,7 @@ let currentQuery = '';
 const JWT_TOKEN = localStorage.getItem('jwtToken');
 
 function getAuthHeaders() {
-    return JWT_TOKEN ? { 'Authorization': 'Bearer ' + JWT_TOKEN } : {};
+    return JWT_TOKEN ? { 'Authorization': 'Bearer ' + JWT_TOKEN, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 }
 
 function showAlert(message, type = 'success') {
