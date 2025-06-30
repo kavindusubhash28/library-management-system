@@ -45,7 +45,9 @@ public class SecurityConfig {
                     "/register.html",
                     "/login.html",
                     "/dashboard.html",
-                    "/user_dashboard.html"
+                    "/user_dashboard.html",
+                    "/api/books",
+                    "/api/books/search"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -76,7 +78,7 @@ public class SecurityConfig {
                             .map(user -> org.springframework.security.core.userdetails.User
                                     .withUsername(user.getEmail())
                                     .password(user.getPassword())
-                                    .authorities(user.getRole())
+                                    .authorities("ROLE_" + user.getRole())
                                     .build())
                             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
                     UsernamePasswordAuthenticationToken authentication =

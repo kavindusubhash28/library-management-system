@@ -47,7 +47,7 @@ public class AuthController {
         String role = userOpt.get().getRole();
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("token", token);
-        response.put("role", role);
+        response.put("role", "ROLE_" + role);
         return ResponseEntity.ok(response);
     }
 } 

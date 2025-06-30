@@ -47,18 +47,24 @@ document.getElementById('loginForm').onsubmit = function(e) {
             password: document.getElementById('password').value
         })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.token && data.role) {
-            localStorage.setItem('jwtToken', data.token);
-            localStorage.setItem('userRole', data.role);
-            if (data.role === 'ROLE_ADMIN') {
-                window.location.href = 'dashboard.html';
+    .then(async res => {
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
+            const data = await res.json();
+            if (data.token && data.role) {
+                localStorage.setItem('jwtToken', data.token);
+                localStorage.setItem('userRole', data.role);
+                if (data.role === 'ROLE_ADMIN') {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'user_dashboard.html';
+                }
             } else {
-                window.location.href = 'user_dashboard.html';
+                document.getElementById('loginAlert').innerHTML = '<div class="alert alert-danger mt-2">Login failed! Check your credentials.</div>';
             }
         } else {
-            document.getElementById('loginAlert').innerHTML = '<div class="alert alert-danger mt-2">Login failed! Check your credentials.</div>';
+            const errorText = await res.text();
+            document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger mt-2">${errorText || 'Login failed! Check your credentials.'}</div>`;
         }
     })
     .catch(() => {
