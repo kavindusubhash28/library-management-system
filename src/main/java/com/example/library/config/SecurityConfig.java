@@ -53,7 +53,10 @@ public class SecurityConfig {
                     "/user_dashboard.html",
                     "/borrow_records.html",
                     "/api/books",
-                    "/api/books/search"
+                    "/api/books/search",
+                    "/images/**",
+                    "/css/**",
+                    "/js/**"
                 ).permitAll()
                 // All other requests require authentication
                 .anyRequest().authenticated()
