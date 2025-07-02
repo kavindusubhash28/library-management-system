@@ -57,6 +57,9 @@ document.getElementById('loginForm').onsubmit = function(e) {
         if (data.token && data.role) {
             localStorage.setItem('jwtToken', data.token);
             localStorage.setItem('userRole', data.role);
+            if (data.name) {
+                localStorage.setItem('userName', data.name);
+            }
             if (data.role === 'ROLE_ADMIN') {
                 window.location.href = 'dashboard.html';
             } else {

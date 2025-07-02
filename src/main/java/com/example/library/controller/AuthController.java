@@ -48,6 +48,12 @@ public class AuthController {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("token", token);
         response.put("role", "ROLE_" + role);
+        response.put("name", userOpt.get().getName());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        return ResponseEntity.ok(userRepository.findAll());
     }
 } 
