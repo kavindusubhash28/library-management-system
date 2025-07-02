@@ -46,6 +46,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Publicly accessible endpoints and static pages
                 .requestMatchers(
+                    "/",
+                    "/index.html",
                     "/api/auth/**",
                     "/register.html",
                     "/login.html",
